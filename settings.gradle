@@ -1,0 +1,2 @@
+rootProject.name = "renderer"
+include ':declarative_renderer'
