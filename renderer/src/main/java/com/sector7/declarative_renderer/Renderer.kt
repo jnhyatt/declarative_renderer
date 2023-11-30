@@ -21,13 +21,6 @@ class Renderer {
     private val pendingMeshes = mutableListOf<PendingMesh>()
     private val pendingUniforms = mutableListOf<PendingUniform>()
 
-    private val vars = FuncVars().apply {
-        floatVars[0] = 1f
-        floatVars[1] = 1f
-    }
-
-    fun eval(f: FloatFunc) = with(vars) { f.eval() }
-
     fun newShader(source: ShaderSource) = synchronized(this) {
         shaderIdGenerator.next().also { id ->
             pendingShaders.add(PendingShader(id, source))
@@ -50,8 +43,39 @@ class Renderer {
         }
     }
 
-    fun drawFrame(drawList: List<DrawCommand>) {
-        val draws = synchronized(this) {
+    fun setPipelineState(pipeline: Pipeline) {
+        glViewport(0, 0, pipeline.viewport.x, pipeline.viewport.y)
+        glClearColor(0f, 0f, 0f, 1f)
+        glLineWidth(4f)
+        glEnable(GL_DEPTH_TEST)
+    }
+
+    fun executePass(pass: RenderPass) {
+        // Sort draws by shader to minimize shader binds
+        val draws = pass.draws.groupBy { it.pipeline.shader }.mapValues {
+            it.value.map { draw -> MeshDraw(draw.mesh, draw.uniforms, draw.pipeline) }
+        }
+
+        pass.framebuffer.bind()
+        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+        for (shaderId in draws.keys) {
+            shaders[shaderId]!!.use()
+            for (draw in draws[shaderId]!!) {
+                setPipelineState(draw.pipeline)
+                for (uniformSet in draw.uniforms) {
+                    val uniform = uniforms[uniformSet.uniform]!!
+                    when (val value = uniformSet.value) {
+                        is Vec3fUniform -> uniform.setVec3f(value.value)
+                        is Mat4fUniform -> uniform.setMat4f(value.value)
+                    }
+                }
+                meshes[draw.mesh]!!.draw()
+            }
+        }
+    }
+
+    fun drawFrame(passes: List<RenderPass>) {
+        synchronized(this) {
             pendingShaders.forEach {
                 shaders[it.id] = ShaderObject.compile(it.source)
             }
@@ -62,40 +86,8 @@ class Renderer {
             pendingShaders.clear()
             pendingMeshes.clear()
             pendingUniforms.clear()
-            drawList.groupBy { it.pipeline.shader }.mapValues {
-                it.value.map { draw -> MeshDraw(draw.mesh, draw.uniforms, draw.pipeline) }
-            }
         }
-
-        glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-
-        draws.keys.forEach { shaderId ->
-            shaders[shaderId]!!.use()
-            for (draw in draws[shaderId]!!) {
-                // Set pipeline state
-                glViewport(0, 0, draw.pipeline.viewport.x, draw.pipeline.viewport.y)
-                glClearColor(0f, 0f, 0f, 1f)
-                glLineWidth(4f)
-                glEnable(GL_DEPTH_TEST)
-                vars.floatVars[screenWidth.index] = draw.pipeline.viewport.x.toFloat()
-                vars.floatVars[screenHeight.index] = draw.pipeline.viewport.y.toFloat()
-                for (uniformSet in draw.uniforms) {
-                    val uniform = uniforms[uniformSet.uniform]!!
-                    with(vars) {
-                        when (val value = uniformSet.value) {
-                            is Vec3fUniform -> uniform.setVec3f(value.value.eval())
-                            is Mat4fUniform -> uniform.setMat4f(value.value.eval())
-                        }
-                    }
-                }
-                meshes[draw.mesh]!!.draw()
-            }
-        }
-    }
-
-    companion object {
-        val screenWidth = FloatVar(0)
-        val screenHeight = FloatVar(1)
+        passes.forEach(::executePass)
     }
 }
 
@@ -103,22 +95,32 @@ data class Pipeline(val shader: ShaderId, val viewport: Vec2i)
 
 data class DrawCommand(val pipeline: Pipeline, val mesh: MeshId, val uniforms: List<UniformSet>)
 
+data class RenderPass(val framebuffer: FramebufferId, val draws: List<DrawCommand>)
+
+data class FramebufferId(private val id: Int) {
+    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, id)
+
+    companion object {
+        val default = FramebufferId(0)
+    }
+}
+
 data class ShaderId(private val id: Int) {
-    class Generator {
+    internal class Generator {
         private var id = 0
         fun next() = ShaderId(id++)
     }
 }
 
 data class MeshId(private val id: Int) {
-    class Generator {
+    internal class Generator {
         private var id = 0
         fun next() = MeshId(id++)
     }
 }
 
 data class UniformId(private val id: Int) {
-    class Generator {
+    internal class Generator {
         private var id = 0
         fun next() = UniformId(id++)
     }

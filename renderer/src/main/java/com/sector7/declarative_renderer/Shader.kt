@@ -9,8 +9,8 @@ data class ShaderSource(val vertexShader: String, val fragmentShader: String)
 data class UniformLocation(val shader: ShaderId, val name: String)
 
 sealed class UniformValue
-class Vec3fUniform(val value: Vec3fFunc) : UniformValue()
-class Mat4fUniform(val value: Mat4fFunc) : UniformValue()
+class Vec3fUniform(val value: Vec3f) : UniformValue()
+class Mat4fUniform(val value: Mat4f) : UniformValue()
 
 data class UniformSet(val uniform: UniformId, val value: UniformValue)
 
