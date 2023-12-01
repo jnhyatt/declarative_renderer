@@ -1,13 +1,6 @@
 package com.sector7.declarative_renderer
 
-import android.opengl.GLES30.GL_COLOR_BUFFER_BIT
-import android.opengl.GLES30.GL_DEPTH_BUFFER_BIT
-import android.opengl.GLES30.GL_DEPTH_TEST
-import android.opengl.GLES30.glClear
-import android.opengl.GLES30.glClearColor
-import android.opengl.GLES30.glEnable
-import android.opengl.GLES30.glLineWidth
-import android.opengl.GLES30.glViewport
+import android.opengl.GLES30.*
 import com.sector7.math.Vec2i
 
 class Renderer {
@@ -116,7 +109,12 @@ class Renderer {
                 uniforms[it.id] = shaders[it.uniform.shader]!!.getUniform(it.uniform.name)
             }
             pendingImages.forEach { images[it.id] = ImageObject.new(it.dimensions) }
-            pendingFramebuffers.forEach { framebuffers[it.id] = FramebufferObject.new() }
+            pendingFramebuffers.forEach {
+                framebuffers[it.id] = FramebufferObject.new(
+                    it.colorTargets.map { id -> images[id]!! },
+                    it.depthStencilTarget?.let { id -> images[id]!! },
+                )
+            }
             pendingShaders.clear()
             pendingMeshes.clear()
             pendingUniforms.clear()

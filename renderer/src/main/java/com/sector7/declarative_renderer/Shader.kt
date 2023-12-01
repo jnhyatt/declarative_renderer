@@ -1,31 +1,6 @@
 package com.sector7.declarative_renderer
 
-import android.opengl.GLES30.GL_FRAGMENT_SHADER
-import android.opengl.GLES30.GL_FRAMEBUFFER
-import android.opengl.GLES30.GL_RGBA
-import android.opengl.GLES30.GL_TEXTURE0
-import android.opengl.GLES30.GL_TEXTURE_2D
-import android.opengl.GLES30.GL_UNSIGNED_INT
-import android.opengl.GLES30.GL_VERTEX_SHADER
-import android.opengl.GLES30.glActiveTexture
-import android.opengl.GLES30.glAttachShader
-import android.opengl.GLES30.glBindFramebuffer
-import android.opengl.GLES30.glBindTexture
-import android.opengl.GLES30.glCompileShader
-import android.opengl.GLES30.glCreateProgram
-import android.opengl.GLES30.glCreateShader
-import android.opengl.GLES30.glDeleteShader
-import android.opengl.GLES30.glGenFramebuffers
-import android.opengl.GLES30.glGenTextures
-import android.opengl.GLES30.glGetShaderInfoLog
-import android.opengl.GLES30.glGetUniformLocation
-import android.opengl.GLES30.glLinkProgram
-import android.opengl.GLES30.glShaderSource
-import android.opengl.GLES30.glTexImage2D
-import android.opengl.GLES30.glUniform1i
-import android.opengl.GLES30.glUniform3f
-import android.opengl.GLES30.glUniformMatrix4fv
-import android.opengl.GLES30.glUseProgram
+import android.opengl.GLES30.*
 import android.util.Log
 import com.sector7.math.Mat4f
 import com.sector7.math.Vec2i
@@ -41,7 +16,7 @@ class ImageUniform(val slot: Int) : UniformValue()
 
 data class UniformSet(val uniform: UniformId, val value: UniformValue)
 
-internal class ShaderObject(private val program: Int) {
+internal class ShaderObject(val program: Int) {
     fun getUniform(name: String) = UniformObject(glGetUniformLocation(program, name))
     fun use() = glUseProgram(program)
 
@@ -69,16 +44,16 @@ internal class ShaderObject(private val program: Int) {
     }
 }
 
-internal class UniformObject(private val location: Int) {
+internal class UniformObject(val location: Int) {
     fun setVec3f(x: Vec3f) = glUniform3f(location, x.x, x.y, x.z)
     fun setMat4f(x: Mat4f) = glUniformMatrix4fv(location, 1, false, x.asColumnMajorArray, 0)
     fun setImage(slot: Int) = glUniform1i(location, slot)
 }
 
-internal class ImageObject(private val image: Int) {
+internal class ImageObject(val handle: Int) {
     fun bind(slot: Int) {
         glActiveTexture(GL_TEXTURE0 + slot)
-        glBindTexture(GL_TEXTURE_2D, image)
+        glBindTexture(GL_TEXTURE_2D, handle)
     }
 
     companion object {
@@ -101,10 +76,25 @@ internal class ImageObject(private val image: Int) {
     }
 }
 
-internal class FramebufferObject(private val framebuffer: Int) {
-    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)
+internal class FramebufferObject(private val handle: Int) {
+    fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, handle)
 
     companion object {
-        fun new() = FramebufferObject(intArrayOf(0).also { glGenFramebuffers(1, it, 0) }[0])
+        fun new(
+            colorTargets: List<ImageObject>, depthStencilTarget: ImageObject?
+        ): FramebufferObject {
+            val framebuffer = intArrayOf(0).also { glGenFramebuffers(1, it, 0) }[0]
+            colorTargets.forEachIndexed { i, image ->
+                glFramebufferTexture2D(
+                    GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, image.handle, 0
+                )
+            }
+            depthStencilTarget?.let {
+                glFramebufferTexture2D(
+                    GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, it.handle, 0
+                )
+            }
+            return FramebufferObject(framebuffer)
+        }
     }
 }
