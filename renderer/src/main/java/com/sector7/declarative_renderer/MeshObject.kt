@@ -4,10 +4,8 @@ import android.opengl.GLES30.*
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
-internal class MeshObject(
-    private val vao: Int,
-    private val vertexCount: Int,
-    private val prim: Int
+internal class MeshObject private constructor(
+    val vao: Int, val vertexCount: Int, val prim: Int
 ) {
     fun draw() {
         glBindVertexArray(vao)
@@ -52,19 +50,13 @@ internal class MeshObject(
             glBindBuffer(GL_ARRAY_BUFFER, vbo)
             val vertexBufferSize = vertexBuffer.limit() * Float.SIZE_BYTES
             glBufferData(
-                GL_ARRAY_BUFFER,
-                vertexBufferSize,
-                vertexBuffer,
-                GL_STATIC_DRAW
+                GL_ARRAY_BUFFER, vertexBufferSize, vertexBuffer, GL_STATIC_DRAW
             )
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
             val indexBufferSize = indexBuffer.limit() * Int.SIZE_BYTES
             glBufferData(
-                GL_ELEMENT_ARRAY_BUFFER,
-                indexBufferSize,
-                indexBuffer,
-                GL_STATIC_DRAW
+                GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, GL_STATIC_DRAW
             )
 
             glEnableVertexAttribArray(0)

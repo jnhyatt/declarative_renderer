@@ -108,7 +108,8 @@ class Renderer {
             }
             pendingMeshes.forEach { meshes[it.id] = MeshObject.new(it.mesh) }
             pendingUniforms.forEach {
-                uniforms[it.id] = shaders[it.uniform.shader]!!.getUniform(it.uniform.name)
+                uniforms[it.id] =
+                    UniformObject.fromShader(shaders[it.uniform.shader]!!, it.uniform.name)
             }
             pendingImages.forEach { images[it.id] = ImageObject.new(it.dimensions) }
             pendingFramebuffers.forEach {
