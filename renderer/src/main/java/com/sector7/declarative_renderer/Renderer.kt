@@ -19,11 +19,13 @@ class Renderer {
     private val imageIdGenerator = ImageId.Generator()
     private val framebufferIdGenerator = FramebufferId.Generator()
 
+    val defaultFramebuffer = framebufferIdGenerator.next()
+
     private val shaders = HashMap<ShaderId, ShaderObject>()
     private val uniforms = HashMap<UniformId, UniformObject>()
     private val meshes = HashMap<MeshId, MeshObject>()
     private val images = HashMap<ImageId, ImageObject>()
-    private val framebuffers = hashMapOf(framebufferIdGenerator.next() to FramebufferObject.default)
+    private val framebuffers = hashMapOf(defaultFramebuffer to FramebufferObject.default)
 
     private val pendingShaders = mutableListOf<PendingShader>()
     private val pendingMeshes = mutableListOf<PendingMesh>()
