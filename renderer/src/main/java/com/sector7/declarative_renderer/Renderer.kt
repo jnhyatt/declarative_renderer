@@ -23,7 +23,7 @@ class Renderer {
     private val uniforms = HashMap<UniformId, UniformObject>()
     private val meshes = HashMap<MeshId, MeshObject>()
     private val images = HashMap<ImageId, ImageObject>()
-    private val framebuffers = HashMap<FramebufferId, FramebufferObject>()
+    private val framebuffers = hashMapOf(framebufferIdGenerator.next() to FramebufferObject.default)
 
     private val pendingShaders = mutableListOf<PendingShader>()
     private val pendingMeshes = mutableListOf<PendingMesh>()
@@ -134,10 +134,6 @@ data class DrawCommand(val pipeline: Pipeline, val mesh: MeshId, val uniforms: L
 data class RenderPass(val framebuffer: FramebufferId, val draws: List<DrawCommand>)
 
 data class FramebufferId(private val id: Int) {
-    companion object {
-        val default = FramebufferId(0)
-    }
-
     internal class Generator {
         private var id = 0
         fun next() = FramebufferId(id++)

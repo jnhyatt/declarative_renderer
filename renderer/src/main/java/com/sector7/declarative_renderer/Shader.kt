@@ -82,6 +82,8 @@ internal class FramebufferObject(private val handle: Int) {
     fun bind() = glBindFramebuffer(GL_FRAMEBUFFER, handle)
 
     companion object {
+        val default = FramebufferObject(0)
+
         fun new(
             colorTargets: List<ImageObject>, depthStencilTarget: ImageObject?
         ): FramebufferObject {
